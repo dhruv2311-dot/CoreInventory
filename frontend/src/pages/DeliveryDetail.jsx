@@ -22,77 +22,77 @@ export default function DeliveryDetail() {
     }
   });
 
-  if (isLoading) return <div className="text-white">Loading...</div>;
-  if (!delivery) return <div className="text-white">Delivery not found</div>;
+  if (isLoading) return <div className="text-white p-8">Analyzing delivery...</div>;
+  if (!delivery) return <div className="text-white p-8">Delivery not found</div>;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate('/deliveries')} className="text-slate-400 hover:text-white transition-colors">
+    <div className="max-w-4xl mx-auto animate-in slide-in-from-bottom-8 duration-500">
+      <div className="flex items-center gap-4 mb-8">
+        <button onClick={() => navigate('/deliveries')} className="p-2 border border-white/5 rounded-lg bg-secondary text-gray-400 hover:text-white hover:border-accent transition-all">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h2 className="text-2xl font-bold text-white tracking-tight flex-1">
+        <h2 className="text-3xl font-bold text-white tracking-tight flex-1 font-poppins">
           {delivery.reference}
         </h2>
         <StatusBadge status={delivery.status} />
       </div>
 
-      <div className="bg-card border border-slate-800 rounded-xl shadow-lg p-6 mb-6">
+      <div className="theme-card">
         
         {delivery.status === 'Draft' && (
-          <div className="flex gap-3 mb-6 pb-6 border-b border-slate-800">
+          <div className="flex gap-4 mb-8 pb-8 border-b border-white/5">
             <button
               onClick={() => validateMutation.mutate()}
               disabled={validateMutation.isPending}
-              className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium shadow flex items-center gap-2 transition-colors disabled:opacity-50"
+              className="btn-primary flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
-              {validateMutation.isPending ? 'Validating...' : 'Validate'}
+              {validateMutation.isPending ? 'Allocating...' : 'Validate Delivery'}
             </button>
             <button
               onClick={() => window.print()}
-              className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-medium border border-slate-700 flex items-center gap-2 transition-colors"
+              className="btn-secondary flex items-center gap-2 bg-secondary text-gray-300 border border-white/10 hover:bg-white/5"
             >
               <Printer className="w-4 h-4" />
-              Print
+              Print Delivery
             </button>
           </div>
         )}
 
         {Object.keys(delivery).length > 0 && (
-          <div className="grid grid-cols-2 gap-6 mb-8 text-sm">
+          <div className="grid grid-cols-2 gap-8 mb-10">
             <div>
-              <p className="font-semibold text-slate-400 mb-1">Customer Address</p>
-              <p className="text-white text-lg">{delivery.customer}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Customer Delivery Endpoint</p>
+              <p className="text-white text-lg font-medium">{delivery.customer}</p>
             </div>
             <div>
-              <p className="font-semibold text-slate-400 mb-1">Schedule Date</p>
-              <p className="text-white text-lg">{new Date(delivery.date).toLocaleDateString()}</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Scheduled Delivery Date</p>
+              <p className="text-white text-lg font-medium">{new Date(delivery.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
         )}
 
-        <h3 className="text-lg font-semibold text-white mb-4">Operations</h3>
-        <div className="rounded-lg border border-slate-800 overflow-hidden bg-slate-900/50">
+        <h3 className="text-lg font-semibold text-white mb-4 font-poppins">Outbound Demand</h3>
+        <div className="rounded-lg border border-white/10 overflow-hidden bg-secondary/50">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-900 border-b border-slate-800 text-slate-400">
+            <thead className="bg-[#141B3A] border-b border-white/10 text-gray-400 text-xs uppercase">
               <tr>
-                <th className="px-4 py-3 font-semibold">Product</th>
-                <th className="px-4 py-3 font-semibold">SKU</th>
-                <th className="px-4 py-3 font-semibold text-right">Done</th>
+                <th className="px-6 py-4 font-semibold">Product Name</th>
+                <th className="px-6 py-4 font-semibold">SKU Standard</th>
+                <th className="px-6 py-4 font-semibold text-right">Done Qty</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-white/5">
               {delivery.delivery_items?.map((item, idx) => (
-                <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                  <td className="px-4 py-3 text-white">{item.products?.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{item.products?.sku}</td>
-                  <td className="px-4 py-3 text-right font-medium text-white">{item.quantity}</td>
+                <tr key={idx} className="hover:bg-[#232C63] transition-colors">
+                  <td className="px-6 py-4 text-white font-medium">{item.products?.name}</td>
+                  <td className="px-6 py-4 text-gray-400">{item.products?.sku}</td>
+                  <td className="px-6 py-4 text-right font-medium text-white bg-white/5">{item.quantity}</td>
                 </tr>
               ))}
               {(!delivery.delivery_items || delivery.delivery_items.length === 0) && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-slate-500 italic">No products in this delivery</td>
+                  <td colSpan={3} className="px-6 py-8 text-center text-gray-500 italic">No products assigned</td>
                 </tr>
               )}
             </tbody>
