@@ -150,17 +150,16 @@ export const requestPasswordResetOtp = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const redirectTo = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password`;
-    let { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
-
-    // If redirect URL isn't allow-listed in Supabase, retry with default project Site URL.
-    if (error && /redirect|redirect_to|not allowed|invalid/i.test(error.message || '')) {
-      ({ error } = await supabase.auth.resetPasswordForEmail(normalizedEmail));
-    }
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalizedEmail,
+      options: {
+        shouldCreateUser: false
+      }
+    });
 
     if (error) {
-      const msg = error.message || 'Could not send reset link';
-      console.error('Reset password email failed:', msg);
+      const msg = error.message || 'Could not send OTP';
+      console.error('Reset password OTP failed:', msg);
 
       if (/rate limit|too many requests/i.test(msg)) {
         res.set('Retry-After', '60');
@@ -170,17 +169,10 @@ export const requestPasswordResetOtp = async (req, res) => {
         });
       }
 
-      if (/redirect|redirect_to|not allowed|invalid/i.test(msg)) {
-        return res.status(400).json({
-          message:
-            'Reset link redirect URL is not allowed. Add http://localhost:5173/reset-password to Supabase Auth URL configuration.'
-        });
-      }
-
       return res.status(400).json({ message: msg });
     }
 
-    return res.status(200).json({ message: 'Password reset link sent to your registered email' });
+    return res.status(200).json({ message: 'OTP sent to your registered email' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
