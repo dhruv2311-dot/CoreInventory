@@ -4,6 +4,14 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
+const isStrongPassword = (pass = '') => {
+  const minLen = pass.length >= 8;
+  const hasUpper = /[A-Z]/.test(pass);
+  const hasLower = /[a-z]/.test(pass);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]+/.test(pass);
+  return minLen && hasUpper && hasLower && hasSpecial;
+};
+
 export const signup = async (req, res) => {
   try {
     const { login_id, email, password } = req.body;
@@ -41,41 +49,22 @@ export const signup = async (req, res) => {
       return res.status(409).json({ message: 'Email is already registered' });
     }
     
-    // 1. Create user in Supabase Auth.
-    // If service role key is configured, use admin API to bypass email rate limits.
-    let authData;
-    let authError;
-    let signupMode = 'standard';
-
-    if (supabaseAdmin) {
-      signupMode = 'admin';
-      const response = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { login_id }
-      });
-      authData = response.data;
-      authError = response.error;
-    } else {
-      const response = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { login_id }
-        }
-      });
-      authData = response.data;
-      authError = response.error;
-    }
+    // 1. Create user via regular signUp to trigger "Confirm sign up" email template.
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { login_id }
+      }
+    });
 
     if (authError) {
       const msg = authError.message || 'Signup failed';
 
       if (/email rate limit exceeded/i.test(msg)) {
+        res.set('Retry-After', '60');
         return res.status(429).json({
-          message:
-            'Signup is temporarily rate-limited by Supabase. Add SUPABASE_SERVICE_ROLE_KEY on server to bypass this limit for backend-created users, or wait and retry.'
+          message: 'Email service is temporarily rate-limited. Please wait 60 seconds and try again.'
         });
       }
 
@@ -101,13 +90,8 @@ export const signup = async (req, res) => {
       throw error;
     }
     
-    const message =
-      signupMode === 'admin'
-        ? 'Account created successfully. You can now sign in.'
-        : 'Account created! Please check your email to verify your account.';
-
     res.status(201).json({ 
-      message,
+      message: 'Account created! Please check your email to verify your account.',
       user: data 
     });
   } catch (error) {
@@ -154,6 +138,122 @@ export const login = async (req, res) => {
 };
 
 export const resetPassword = async (req, res) => {
-  // basic mock for forgotten password using OTP flow
-  res.status(200).json({ message: 'OTP sent successfully (Mock)' });
+  return requestPasswordResetOtp(req, res);
+};
+
+export const requestPasswordResetOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'email is required' });
+    }
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (userError) {
+      throw userError;
+    }
+
+    // Avoid creating auth users from forgot-password flow.
+    if (!user) {
+      return res.status(404).json({ message: 'No account found for this email' });
+    }
+
+    const redirectTo = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+    if (error) {
+      const msg = error.message || 'Could not send OTP';
+
+      if (/rate limit|too many requests/i.test(msg)) {
+        res.set('Retry-After', '60');
+        return res.status(429).json({
+          message:
+            'OTP service is temporarily rate-limited. Please wait 60 seconds and request OTP again.'
+        });
+      }
+
+      return res.status(400).json({ message: msg });
+    }
+
+    return res.status(200).json({ message: 'Password reset link sent to your registered email' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const confirmPasswordResetOtp = async (req, res) => {
+  try {
+    const { email, token, otp, new_password } = req.body;
+    const verificationToken = token || otp;
+
+    if (!email || !verificationToken || !new_password) {
+      return res.status(400).json({ message: 'email, otp, and new_password are required' });
+    }
+
+    if (!isStrongPassword(new_password)) {
+      return res.status(400).json({
+        message: 'Password needs 8+ chars, upper, lower, and special char'
+      });
+    }
+
+    let verifyData;
+    let verifyError;
+
+    ({ data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email,
+      token: verificationToken,
+      type: 'email'
+    }));
+
+    if (verifyError) {
+      ({ data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: verificationToken,
+        type: 'recovery'
+      }));
+    }
+
+    if (verifyError) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    const authUserId = verifyData?.user?.id;
+    if (!authUserId) {
+      return res.status(400).json({ message: 'OTP verification failed' });
+    }
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({
+        message: 'Server is missing SUPABASE_SERVICE_ROLE_KEY for secure password reset'
+      });
+    }
+
+    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+      password: new_password
+    });
+
+    if (updateAuthError) {
+      return res.status(400).json({ message: updateAuthError.message || 'Could not update password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    const { error: updateUserError } = await supabase
+      .from('users')
+      .update({ password: hashedPassword })
+      .eq('id', authUserId);
+
+    if (updateUserError) {
+      throw updateUserError;
+    }
+
+    return res.status(200).json({ message: 'Password reset successful. Please log in.' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 };

@@ -33,6 +33,8 @@ export const apiCall = async (endpoint, method = 'GET', body = null) => {
 export const authApi = {
   login: (data) => apiCall('/auth/login', 'POST', data),
   signup: (data) => apiCall('/auth/signup', 'POST', data),
+  requestPasswordReset: (data) => apiCall('/auth/reset-password/request', 'POST', data),
+  confirmPasswordReset: (data) => apiCall('/auth/reset-password/confirm', 'POST', data),
 };
 
 export const productsApi = {
