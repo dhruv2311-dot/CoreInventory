@@ -104,6 +104,7 @@ export default function Stock() {
                   value={newQuantity}
                   onChange={e => setNewQuantity(e.target.value)}
                   className="theme-input w-full font-semibold text-lg"
+                  placeholder="e.g. 125"
                 />
               </div>
 
