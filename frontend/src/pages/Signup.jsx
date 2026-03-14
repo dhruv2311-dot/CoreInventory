@@ -34,7 +34,7 @@ export default function Signup() {
     }
 
     if (!validatePassword(formData.password)) {
-      return setError('Password must be at least 8 chars, contain uppercase, lowercase & special char');
+      return setError('Password needs 8+ chars, upper, lower, and special char');
     }
 
     setLoading(true);
@@ -54,68 +54,73 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
-      <div className="max-w-md w-full p-8 rounded-xl bg-card border border-slate-800 shadow-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-primary px-4 py-12 font-inter text-white">
+      <div className="max-w-md w-full theme-card p-10 animate-in slide-in-from-bottom-8 duration-500">
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">Create Account</h2>
-          <p className="text-slate-400">Join CoreInventory</p>
+          <div className="flex justify-center mb-4">
+            <div className="w-12 h-12 rounded-lg bg-accent text-black font-poppins font-bold text-2xl flex items-center justify-center shadow-lg">
+              C
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold font-poppins tracking-tight mb-2">Setup Account</h2>
+          <p className="text-gray-400">Join the CoreInventory enterprise</p>
         </div>
         
         {error && (
-          <div className="bg-danger/10 text-danger p-3 rounded-md mb-6 text-sm border border-danger/50">
-            {error}
+          <div className="bg-danger/10 border border-danger/30 text-danger p-3 rounded-lg mb-6 text-sm flex items-center gap-2">
+            <span className="shrink-0">⚠️</span> {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-300">Login ID</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Employee ID</label>
             <input
               type="text"
               name="loginId"
               required
               value={formData.loginId}
               onChange={handleChange}
-              className="mt-1 w-full p-3 rounded-md bg-slate-900 border border-slate-700 text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              placeholder="Min 6 characters"
+              className="theme-input w-full"
+              placeholder="Min 6 characters e.g., EMP-101"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300">Email Address</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Corporate Email</label>
             <input
               type="email"
               name="email"
               required
               value={formData.email}
               onChange={handleChange}
-              className="mt-1 w-full p-3 rounded-md bg-slate-900 border border-slate-700 text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="theme-input w-full"
               placeholder="you@company.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300">Password</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
             <input
               type="password"
               name="password"
               required
               value={formData.password}
               onChange={handleChange}
-              className="mt-1 w-full p-3 rounded-md bg-slate-900 border border-slate-700 text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="theme-input w-full"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1.5">Confirm Password</label>
             <input
               type="password"
               name="confirmPassword"
               required
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="mt-1 w-full p-3 rounded-md bg-slate-900 border border-slate-700 text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="theme-input w-full"
               placeholder="••••••••"
             />
           </div>
@@ -123,14 +128,14 @@ export default function Signup() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex justify-center py-3 px-4 rounded-md shadow-sm text-sm font-semibold text-white bg-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all disabled:opacity-50 border border-transparent"
+            className="w-full btn-primary py-3 text-sm font-semibold mt-4"
           >
-            {loading ? 'Creating Account...' : 'Sign Up'}
+            {loading ? 'Creating Identity...' : 'Register Account'}
           </button>
 
-          <p className="text-center text-sm text-slate-400 mt-4">
-            Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:text-blue-400 font-medium">
+          <p className="text-center text-sm text-gray-400 font-medium">
+            Already verified?{' '}
+            <Link to="/login" className="text-accent hover:text-white transition-colors">
               Sign In
             </Link>
           </p>
