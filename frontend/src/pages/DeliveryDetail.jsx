@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { deliveriesApi } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { ArrowLeft, Check, Printer } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 export default function DeliveryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAdmin = useAuthStore((state) => state.isAdmin);
 
   const { data: delivery, isLoading } = useQuery({
     queryKey: ['delivery', id],
@@ -41,14 +43,16 @@ export default function DeliveryDetail() {
         
         {delivery.status === 'Draft' && (
           <div className="flex gap-4 mb-8 pb-8 border-b border-white/5">
-            <button
-              onClick={() => validateMutation.mutate()}
-              disabled={validateMutation.isPending}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              {validateMutation.isPending ? 'Allocating...' : 'Validate Delivery'}
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => validateMutation.mutate()}
+                disabled={validateMutation.isPending}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                {validateMutation.isPending ? 'Allocating...' : 'Validate Delivery'}
+              </button>
+            )}
             <button
               onClick={() => window.print()}
               className="btn-secondary flex items-center gap-2 bg-secondary text-gray-300 border border-white/10 hover:bg-white/5"
