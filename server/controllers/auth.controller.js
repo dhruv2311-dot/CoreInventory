@@ -11,6 +11,12 @@ import {
 import { sendPasswordResetOtpEmail } from '../services/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+const SUPPORTED_ROLES = ['Inventory Manager', 'Warehouse Staff'];
+
+const normalizeRole = (role) => {
+  if (!role) return 'Warehouse Staff';
+  return SUPPORTED_ROLES.includes(role) ? role : 'Warehouse Staff';
+};
 
 const isStrongPassword = (pass = '') => {
   const minLen = pass.length >= 8;
@@ -22,7 +28,8 @@ const isStrongPassword = (pass = '') => {
 
 export const signup = async (req, res) => {
   try {
-    const { login_id, email, password } = req.body;
+    const { login_id, email, password, role } = req.body;
+    const normalizedRole = normalizeRole(role);
 
     if (!login_id || !email || !password) {
       return res.status(400).json({ message: 'login_id, email, and password are required' });
@@ -62,7 +69,7 @@ export const signup = async (req, res) => {
       email,
       password,
       options: {
-        data: { login_id }
+        data: { login_id, role: normalizedRole }
       }
     });
 
@@ -107,7 +114,7 @@ export const signup = async (req, res) => {
     
     res.status(201).json({ 
       message: 'Account created! Please check your email to verify your account.',
-      user: data 
+      user: { ...data, role: normalizedRole } 
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -139,13 +146,15 @@ export const login = async (req, res) => {
       // This will automatically relay "Email not confirmed" or "Invalid login credentials"
       return res.status(401).json({ message: authError.message });
     }
+
+    const normalizedRole = normalizeRole(authData.user?.user_metadata?.role || user.role);
     
     // 3. Issue our own JWT for app-wide authorization
-    const token = jwt.sign({ id: user.id, login_id: user.login_id }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user.id, login_id: user.login_id, role: normalizedRole }, JWT_SECRET, { expiresIn: '1d' });
     
     res.status(200).json({ 
       token, 
-      user: { id: user.id, login_id: user.login_id, email: user.email } 
+      user: { id: user.id, login_id: user.login_id, email: user.email, created_at: user.created_at, role: normalizedRole } 
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
