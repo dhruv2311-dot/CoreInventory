@@ -10,16 +10,19 @@ export default function MoveHistory() {
     { accessorKey: 'type', header: 'Reference Type' },
     { accessorKey: 'date', header: 'Date', cell: info => new Date(info.getValue()).toLocaleString() },
     { accessorKey: 'products.name', header: 'Product' },
-    { accessorKey: 'quantity', header: 'Quantity' },
-    { accessorKey: 'status', header: 'Status', cell: () => <StatusBadge status="Done" /> },
+    { accessorKey: 'quantity', header: 'Quantity Logled' },
+    { accessorKey: 'status', header: 'Ledger Status', cell: () => <StatusBadge status="Done" /> },
   ];
 
-  if (isLoading) return <div className="text-white p-8">Loading...</div>;
+  if (isLoading) return <div className="text-white p-8">Fetching ledger entries...</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Move History</h2>
+    <div className="animate-in fade-in duration-500">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-2xl font-semibold text-white font-poppins tracking-tight">Stock Movements Ledger</h2>
+          <p className="text-gray-400 text-sm mt-1">Immutable history of inventory changes</p>
+        </div>
       </div>
 
       <DataTable columns={columns} data={moves} />
