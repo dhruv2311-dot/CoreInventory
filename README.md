@@ -1,57 +1,134 @@
 # CoreInventory
 
-A complete Inventory Management System replacing manual stock tracking with a centralized, real-time application.
+CoreInventory is a full inventory operations platform for products, receipts, deliveries, stock tracking, warehouse/location management, and authenticated staff workflows.
+
+## What Is New (Recent Updates)
+
+The README has been updated to reflect the latest implementation in this codebase.
+
+### Authentication and Security
+- Added robust signup validation and duplicate detection for `login_id` and `email`.
+- Added clearer backend error mapping for auth failures (duplicate user, rate limit, confirmation email failure).
+- Added `Retry-After` based handling in API responses for rate-limited flows.
+- Added custom forgot-password OTP workflow (request + confirm endpoints).
+- OTP is now generated server-side, hashed in memory, expiry/cooldown protected, and attempts-limited.
+- Password reset confirmation updates both Supabase Auth password and local `users` table hash.
+
+### Email and OTP Delivery
+- Integrated backend SMTP mailer using Nodemailer.
+- Added Gmail App Password compatible configuration (spaces are sanitized in SMTP pass).
+- Added OTP email template delivery from backend mailer.
+
+### Frontend UX and Loading Improvements
+- Added professional global loading system:
+  - Full-screen branded splash loader on app boot.
+  - Route transition loader.
+  - Global API/network activity loader with top progress indicator.
+- Splash now appears only on first visit per browser session.
+- Added request activity signaling from API service to drive global loading state.
+
+### Routing and Screen Flow
+- Added `Forgot Password` page flow with OTP request and OTP verification/reset.
+- Added `Reset Password` page route support in the app router.
+- Added `Profile` route in protected app routes.
+
+### Stability and Runtime Fixes
+- Fixed potential Zustand selector rerender loop issues.
+- Improved chart container sizing to avoid zero/negative size chart rendering warnings.
+- Improved frontend error display behavior for auth API responses.
+
+## Tech Stack
+- Frontend: React + Vite + React Router + React Query + Tailwind CSS
+- Backend: Node.js + Express
+- Auth/Database: Supabase
+- Email (custom OTP): Nodemailer + SMTP (Gmail App Password supported)
 
 ## Minimum Requirements
 - Node.js (v18+)
-- Postgres Database (Supabase)
+- Supabase project
 
 ## Environment Variables
-Before running the application, make sure to set up your environment variables.
 
 ### Backend (`server/.env`)
-Create a `.env` file in the `server` directory using the provided `.env.example`:
-```
+```dotenv
 PORT=5000
-JWT_SECRET=super_secret_string
-SUPABASE_URL=your_supabase_url
+JWT_SECRET=replace_with_strong_secret
+
+SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+FRONTEND_URL=http://localhost:5173
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password
+SMTP_FROM_EMAIL=your_email@gmail.com
+SMTP_FROM_NAME=CoreInventory
+
+PASSWORD_RESET_OTP_EXPIRY_MINUTES=10
+PASSWORD_RESET_OTP_COOLDOWN_SECONDS=60
+PASSWORD_RESET_OTP_MAX_ATTEMPTS=5
 ```
 
 ### Frontend (`frontend/.env`)
-Create a `.env` file in the `frontend` directory:
-```
+```dotenv
 VITE_API_URL=http://localhost:5000
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_KEY=your_supabase_anon_key
 ```
 
-## Setup & Running
+## Setup and Run
 
-**1. Install Dependencies**
+### 1) Install dependencies
 ```bash
-# Frontend
+# from repo root
 cd frontend
 npm install
 
-# Backend
-cd server
+cd ../server
 npm install
 ```
 
-**2. Run the Servers**
+### 2) Start backend
 ```bash
-# Frontend
-npm run dev
-
-# Backend
+cd server
 npm run dev
 ```
 
-## Supabase Schema Requirements
+### 3) Start frontend
+```bash
+cd frontend
+npm run dev
+```
 
-To ensure the backend works seamlessly, run the following SQL queries in your Supabase SQL editor:
+## Auth Endpoints (Current)
+- `POST /auth/signup`
+- `POST /auth/login`
+- `POST /auth/reset-password`
+- `POST /auth/reset-password/request`
+- `POST /auth/reset-password/confirm`
+
+## Main Application Features
+- Login/signup with employee login ID workflow
+- Email confirmation based signup (Supabase)
+- Custom OTP based forgot-password reset flow (SMTP)
+- Dashboard KPIs and trend chart
+- Product management
+- Receipt workflows (draft to done)
+- Delivery workflows (draft to done)
+- Stock update and transfer
+- Move history tracking
+- Warehouse and location management
+- Protected routes with centralized layout
+- Realtime-aware frontend data sync behavior
+
+## Database Schema (Supabase)
+
+Use the following baseline tables if setting up from scratch:
 
 ```sql
--- Users table
 CREATE TABLE users (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   login_id text UNIQUE NOT NULL,
@@ -60,7 +137,6 @@ CREATE TABLE users (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- Products
 CREATE TABLE products (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   name text NOT NULL,
@@ -71,7 +147,6 @@ CREATE TABLE products (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- Warehouses
 CREATE TABLE warehouses (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   name text,
@@ -79,7 +154,6 @@ CREATE TABLE warehouses (
   address text
 );
 
--- Locations
 CREATE TABLE locations (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   name text,
@@ -87,7 +161,6 @@ CREATE TABLE locations (
   warehouse_id uuid REFERENCES warehouses(id)
 );
 
--- Stock
 CREATE TABLE stock (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   product_id uuid REFERENCES products(id),
@@ -95,7 +168,6 @@ CREATE TABLE stock (
   quantity numeric DEFAULT 0
 );
 
--- Receipts
 CREATE TABLE receipts (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   reference text UNIQUE,
@@ -111,7 +183,6 @@ CREATE TABLE receipt_items (
   quantity numeric
 );
 
--- Deliveries
 CREATE TABLE deliveries (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   reference text UNIQUE,
@@ -127,7 +198,6 @@ CREATE TABLE delivery_items (
   quantity numeric
 );
 
--- Stock Moves
 CREATE TABLE stock_moves (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   product_id uuid REFERENCES products(id),
@@ -139,14 +209,7 @@ CREATE TABLE stock_moves (
 );
 ```
 
-## Features Complete:
-- Authentication Flow (Login ID/Passwords matching Supabase backend hashing logic)
-- Dashboard KPIs & Overview
-- Products Management
-- Receipts workflows (Draft -> Done functionality and dynamic inventory adjustment)
-- Delivery workflows (Draft -> Done functionality and stock deduction)
-- Stock overrides and manual physical counting adjust
-- Move History tracking with specific references
-- Settings & App Nav (Sidebar/Navbar)
-- React Query integrations
-- Tailwind CSS v4 custom theme with specific minimal industrial design elements requested.
+## Notes
+- For custom OTP delivery, backend SMTP must be valid.
+- Signup confirmation email still depends on Supabase Authentication email delivery settings.
+- If using Gmail SMTP, use a Gmail App Password, not your normal account password.
