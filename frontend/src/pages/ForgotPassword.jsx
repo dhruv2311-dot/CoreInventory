@@ -160,6 +160,7 @@ export default function ForgotPassword() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="theme-input w-full"
+                placeholder="you@company.com"
               />
             </div>
 
