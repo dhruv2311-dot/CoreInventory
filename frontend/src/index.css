@@ -1,19 +1,49 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
 @theme {
-  --color-primary: #2563EB;
-  --color-secondary: #0F172A;
-  --color-accent: #22C55E;
+  --color-primary: #0B1026;
+  --color-secondary: #141B3A;
+  --color-card: #1C2452;
+  --color-sidebar: #12193A;
+  --color-accent: #E8C77B;
+  --color-accentblue: #3A6FF8;
+  --color-success: #22C55E;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --color-background: #020617;
-  --color-card: #0F172A;
+  --color-background: #0B1026;
+  
+  --font-inter: 'Inter', sans-serif;
+  --font-poppins: 'Poppins', sans-serif;
 }
 
 @layer base {
   body {
-    background-color: var(--color-background);
-    color: white;
-    font-family: 'Inter', sans-serif;
+    background-color: var(--color-primary);
+    color: #FFFFFF;
+    font-family: var(--font-inter);
+  }
+}
+
+/* Base Form Inputs */
+@layer components {
+  .theme-input {
+    @apply bg-secondary border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all duration-200;
+  }
+  
+  .btn-primary {
+    @apply bg-accent text-black px-4 py-2 rounded-lg font-medium hover:scale-[1.02] hover:opacity-90 transition-all shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-accentblue text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all;
+  }
+  
+  .btn-danger {
+    @apply bg-danger text-white px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all;
+  }
+
+  .theme-card {
+    @apply bg-card rounded-xl p-5 shadow-lg hover:scale-[1.02] transition-all duration-200 border border-white/5;
   }
 }
