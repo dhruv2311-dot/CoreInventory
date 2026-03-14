@@ -1,6 +1,14 @@
 import { supabase, supabaseAdmin } from '../config/supabase.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import {
+  canSendPasswordResetOtp,
+  createPasswordResetOtp,
+  getOtpCooldownSeconds,
+  getOtpExpiryMinutes,
+  verifyPasswordResetOtp,
+} from '../services/passwordResetOtpStore.js';
+import { sendPasswordResetOtpEmail } from '../services/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 
@@ -60,6 +68,13 @@ export const signup = async (req, res) => {
 
     if (authError) {
       const msg = authError.message || 'Signup failed';
+
+      if (/error sending confirmation email/i.test(msg)) {
+        return res.status(400).json({
+          message:
+            'Signup confirmation email could not be sent. Check Supabase Authentication SMTP settings or disable custom SMTP there, then try again.'
+        });
+      }
 
       if (/email rate limit exceeded/i.test(msg)) {
         res.set('Retry-After', '60');
@@ -150,26 +165,41 @@ export const requestPasswordResetOtp = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        shouldCreateUser: false
-      }
-    });
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
 
-    if (error) {
-      const msg = error.message || 'Could not send OTP';
-      console.error('Reset password OTP failed:', msg);
+    if (userError) {
+      throw userError;
+    }
 
-      if (/rate limit|too many requests/i.test(msg)) {
-        res.set('Retry-After', '60');
-        return res.status(429).json({
-          message:
-            'Reset password email service is temporarily rate-limited. Please wait 60 seconds and try again.'
-        });
-      }
+    if (!user) {
+      return res.status(404).json({ message: 'No account found for this email' });
+    }
 
-      return res.status(400).json({ message: msg });
+    const cooldown = canSendPasswordResetOtp(normalizedEmail);
+    if (!cooldown.allowed) {
+      res.set('Retry-After', String(cooldown.retryAfterSeconds));
+      return res.status(429).json({
+        message: `Please wait ${cooldown.retryAfterSeconds} seconds before requesting another OTP.`
+      });
+    }
+
+    const otp = createPasswordResetOtp(normalizedEmail);
+
+    try {
+      await sendPasswordResetOtpEmail({
+        email: normalizedEmail,
+        otp,
+        expiryMinutes: getOtpExpiryMinutes(),
+      });
+    } catch (mailError) {
+      console.error('Reset password OTP failed:', mailError.message);
+      return res.status(500).json({
+        message: 'Could not send OTP email. Check SMTP_USER and SMTP_PASS in server .env.'
+      });
     }
 
     return res.status(200).json({ message: 'OTP sent to your registered email' });
@@ -182,8 +212,9 @@ export const confirmPasswordResetOtp = async (req, res) => {
   try {
     const { email, token, otp, new_password } = req.body;
     const verificationToken = token || otp;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email || !verificationToken || !new_password) {
+    if (!normalizedEmail || !verificationToken || !new_password) {
       return res.status(400).json({ message: 'email, otp, and new_password are required' });
     }
 
@@ -193,30 +224,23 @@ export const confirmPasswordResetOtp = async (req, res) => {
       });
     }
 
-    let verifyData;
-    let verifyError;
-
-    ({ data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: verificationToken,
-      type: 'email'
-    }));
-
-    if (verifyError) {
-      ({ data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: verificationToken,
-        type: 'recovery'
-      }));
+    const otpVerification = verifyPasswordResetOtp(normalizedEmail, verificationToken);
+    if (!otpVerification.valid) {
+      return res.status(400).json({ message: otpVerification.message });
     }
 
-    if (verifyError) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (userError) {
+      throw userError;
     }
 
-    const authUserId = verifyData?.user?.id;
-    if (!authUserId) {
-      return res.status(400).json({ message: 'OTP verification failed' });
+    if (!user?.id) {
+      return res.status(404).json({ message: 'No account found for this email' });
     }
 
     if (!supabaseAdmin) {
@@ -225,7 +249,7 @@ export const confirmPasswordResetOtp = async (req, res) => {
       });
     }
 
-    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
       password: new_password
     });
 
@@ -237,7 +261,7 @@ export const confirmPasswordResetOtp = async (req, res) => {
     const { error: updateUserError } = await supabase
       .from('users')
       .update({ password: hashedPassword })
-      .eq('id', authUserId);
+      .eq('id', user.id);
 
     if (updateUserError) {
       throw updateUserError;

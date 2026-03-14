@@ -52,7 +52,7 @@ export default function ForgotPassword() {
       if (err?.status === 429) {
         const waitSeconds = err?.retryAfter || 60;
         setCooldownSeconds(waitSeconds);
-        setError(`Email rate-limited by Supabase. Please wait ${waitSeconds} seconds before retrying.`);
+        setError(`Please wait ${waitSeconds} seconds before requesting another OTP.`);
       } else {
         setError(err.message || 'Could not send OTP');
       }
