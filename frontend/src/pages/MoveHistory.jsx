@@ -1,9 +1,43 @@
 import { useQuery } from '@tanstack/react-query';
-import { LayoutGrid, Rows3 } from 'lucide-react';
+import { Clock3, LayoutGrid, Rows3 } from 'lucide-react';
 import { useState } from 'react';
 import { stockApi } from '../services/api';
 import DataTable from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
+
+const getTimelineOwnership = (move) => {
+  const type = String(move.type || '').toLowerCase();
+
+  if (type.includes('receipt')) {
+    return {
+      primaryRole: 'Warehouse Staff',
+      action: 'Receiving and shelving incoming goods',
+      managerStep: 'Inventory Manager monitors receipt completion and stock visibility',
+    };
+  }
+
+  if (type.includes('delivery')) {
+    return {
+      primaryRole: 'Warehouse Staff',
+      action: 'Picking and staging outbound goods',
+      managerStep: 'Inventory Manager tracks fulfillment and dispatch readiness',
+    };
+  }
+
+  if (type.includes('transfer')) {
+    return {
+      primaryRole: 'Warehouse Staff',
+      action: 'Moving stock between locations and shelves',
+      managerStep: 'Inventory Manager monitors inventory balance across locations',
+    };
+  }
+
+  return {
+    primaryRole: 'Inventory Manager',
+    action: 'Reviewing stock control and inventory adjustments',
+    managerStep: 'Warehouse Staff typically perform count checks before final validation',
+  };
+};
 
 export default function MoveHistory() {
   const [viewMode, setViewMode] = useState('table');
@@ -26,6 +60,11 @@ export default function MoveHistory() {
     { accessorKey: 'quantity', header: 'Quantity Logged' },
     { accessorKey: 'status', header: 'Ledger Status', cell: () => <StatusBadge status="Done" /> },
   ];
+
+  const timelineItems = moves.map((move) => ({
+    ...move,
+    ownership: getTimelineOwnership(move),
+  }));
 
   if (isLoading) return <div className="text-white p-8">Fetching ledger entries...</div>;
 
@@ -57,12 +96,22 @@ export default function MoveHistory() {
             <LayoutGrid className="w-4 h-4" />
             Kanban
           </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('timeline')}
+            className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2 ${
+              viewMode === 'timeline' ? 'bg-[#232C63] text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Clock3 className="w-4 h-4" />
+            Timeline
+          </button>
         </div>
       </div>
 
       {viewMode === 'table' ? (
         <DataTable columns={columns} data={moves} />
-      ) : (
+      ) : viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
           {groupedMoves.map((column) => (
             <div key={column.type} className="rounded-xl border border-white/10 bg-card/70 p-3">
@@ -73,7 +122,7 @@ export default function MoveHistory() {
                 </span>
               </div>
 
-              <div className="space-y-3 min-h-[120px]">
+              <div className="space-y-3 min-h-30">
                 {column.items.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-white/10 p-3 text-xs text-gray-500 text-center">
                     No entries
@@ -98,6 +147,65 @@ export default function MoveHistory() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-white/10 bg-card/70 p-4">
+            <h3 className="text-sm font-semibold text-white mb-2">Role-Aligned Operations Timeline</h3>
+            <p className="text-sm text-gray-400">
+              Inventory Managers oversee stock accuracy, product records, receipts, and deliveries. Warehouse Staff execute receiving,
+              transfers, picking, shelving, and counting in the live operation flow below.
+            </p>
+          </div>
+
+          <div className="relative pl-6">
+            <div className="absolute left-2 top-0 bottom-0 w-px bg-white/10"></div>
+            <div className="space-y-4">
+              {timelineItems.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 p-6 text-sm text-gray-400 text-center bg-card/50">
+                  No timeline events available yet.
+                </div>
+              ) : (
+                timelineItems.map((move) => (
+                  <div key={move.id} className="relative">
+                    <div className="absolute -left-[1.05rem] top-5 h-3 w-3 rounded-full bg-accent border-2 border-primary"></div>
+                    <div className="rounded-xl border border-white/10 bg-card/70 p-4 hover:border-accent/40 transition-colors">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-white">{move.products?.name || 'Unknown Product'}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-gray-300 border border-white/10">
+                              {move.type}
+                            </span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                              move.ownership.primaryRole === 'Inventory Manager'
+                                ? 'bg-accent/10 text-accent border-accent/20'
+                                : 'bg-accentblue/10 text-accentblue border-accentblue/20'
+                            }`}>
+                              {move.ownership.primaryRole}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-300">{move.ownership.action}</p>
+                          <p className="text-xs text-gray-400">{move.ownership.managerStep}</p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                            <span>Qty: {move.quantity}</span>
+                            {move.from_loc?.name && <span>From: {move.from_loc.name}</span>}
+                            {move.to_loc?.name && <span>To: {move.to_loc.name}</span>}
+                            {move.products?.sku && <span>SKU: {move.products.sku}</span>}
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+                          <StatusBadge status="Done" />
+                          <span className="text-xs text-gray-400">{new Date(move.date).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
