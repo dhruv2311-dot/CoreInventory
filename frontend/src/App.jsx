@@ -15,6 +15,7 @@ import Stock from './pages/Stock';
 import MoveHistory from './pages/MoveHistory';
 import Warehouse from './pages/Warehouse';
 import Locations from './pages/Locations';
+import Transfers from './pages/Transfers';
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -36,6 +37,7 @@ function App() {
         <Route path="/deliveries" element={<ProtectedRoute><Deliveries /></ProtectedRoute>} />
         <Route path="/deliveries/:id" element={<ProtectedRoute><DeliveryDetail /></ProtectedRoute>} />
         <Route path="/stock" element={<ProtectedRoute><Stock /></ProtectedRoute>} />
+        <Route path="/transfers" element={<ProtectedRoute><Transfers /></ProtectedRoute>} />
         <Route path="/move-history" element={<ProtectedRoute><MoveHistory /></ProtectedRoute>} />
         <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
         <Route path="/locations" element={<ProtectedRoute><Locations /></ProtectedRoute>} />
