@@ -53,6 +53,7 @@ export const receiptsApi = {
   getAll: () => apiCall('/receipts'),
   getById: (id) => apiCall(`/receipts/${id}`),
   create: (data) => apiCall('/receipts', 'POST', data),
+  updateStatus: (id, status) => apiCall(`/receipts/${id}/status`, 'PUT', { status }),
   validate: (id) => apiCall(`/receipts/${id}/validate`, 'PUT'),
 };
 
@@ -60,6 +61,7 @@ export const deliveriesApi = {
   getAll: () => apiCall('/deliveries'),
   getById: (id) => apiCall(`/deliveries/${id}`),
   create: (data) => apiCall('/deliveries', 'POST', data),
+  updateStatus: (id, status) => apiCall(`/deliveries/${id}/status`, 'PUT', { status }),
   validate: (id) => apiCall(`/deliveries/${id}/validate`, 'PUT'),
 };
 
