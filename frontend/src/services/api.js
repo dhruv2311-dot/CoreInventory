@@ -58,4 +58,15 @@ export const stockApi = {
   getAll: () => apiCall('/stock'),
   getMoves: () => apiCall('/stock/moves'),
   update: (data) => apiCall('/stock/update', 'PUT', data),
+  transfer: (data) => apiCall('/stock/transfer', 'POST', data),
+};
+
+export const warehouseApi = {
+  getAll: () => apiCall('/warehouses'),
+  create: (data) => apiCall('/warehouses', 'POST', data),
+};
+
+export const locationApi = {
+  getAll: () => apiCall('/locations'),
+  create: (data) => apiCall('/locations', 'POST', data),
 };
