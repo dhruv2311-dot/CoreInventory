@@ -43,10 +43,10 @@ export default function Sidebar() {
         className={`flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 border-l-4 ${
           isActive 
             ? 'bg-card text-accent border-accent' 
-            : 'text-gray-300 border-transparent hover:bg-card hover:border-accent'
+            : 'text-muted border-transparent hover:bg-card hover:text-foreground hover:border-accent'
         }`}
       >
-        <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-accent' : 'text-gray-400'}`} />
+        <Icon className={`mr-3 h-5 w-5 ${isActive ? 'text-accent' : 'text-muted'}`} />
         {item.name}
       </Link>
     );
@@ -59,7 +59,7 @@ export default function Sidebar() {
           <div className="w-8 h-8 rounded bg-accent flex items-center justify-center font-bold text-black font-poppins text-lg">
             C
           </div>
-          <span className="font-semibold text-lg text-white font-poppins tracking-wide">
+          <span className="font-semibold text-lg text-foreground font-poppins tracking-wide">
             CoreInventory
           </span>
         </div>
@@ -67,7 +67,7 @@ export default function Sidebar() {
       
       <div className="flex-1 overflow-y-auto pt-6 flex flex-col gap-6">
         <div>
-          <div className="px-6 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          <div className="px-6 mb-2 text-xs font-semibold text-muted uppercase tracking-wider">
             Operations
           </div>
           <nav className="space-y-1">
@@ -77,7 +77,7 @@ export default function Sidebar() {
 
         {isAdmin && (
           <div>
-            <div className="px-6 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <div className="px-6 mb-2 text-xs font-semibold text-muted uppercase tracking-wider">
               Settings
             </div>
             <nav className="space-y-1">
