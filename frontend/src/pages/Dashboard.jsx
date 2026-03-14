@@ -67,8 +67,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 mt-8">
         <div className="theme-card">
           <h3 className="text-lg font-semibold text-white mb-6 font-poppins">Inventory Movement Trend</h3>
-          <div className="h-80 w-full mt-4">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-80 w-full mt-4 min-h-[320px] min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={280} minHeight={280}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="#9CA3AF" tick={{fill: '#9CA3AF', fontSize: 12}} axisLine={false} tickLine={false} />

@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase.js';
+import { supabase, supabaseAdmin } from '../config/supabase.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -7,29 +7,80 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 export const signup = async (req, res) => {
   try {
     const { login_id, email, password } = req.body;
-    
-    // Check if user already exists in our table to prevent duplicates
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .or(`login_id.eq.${login_id},email.eq.${email}`)
-      .maybeSingle();
-      
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+
+    if (!login_id || !email || !password) {
+      return res.status(400).json({ message: 'login_id, email, and password are required' });
     }
     
-    // 1. Create user in Supabase Auth (This triggers the Confirmation Email!)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { login_id }
-      }
-    });
+    // Check login_id and email independently for deterministic duplicate errors.
+    const { data: existingLoginId, error: existingLoginError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('login_id', login_id)
+      .maybeSingle();
+
+    if (existingLoginError) {
+      throw existingLoginError;
+    }
+
+    if (existingLoginId) {
+      return res.status(409).json({ message: 'Login ID is already taken' });
+    }
+
+    const { data: existingEmail, error: existingEmailError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingEmailError) {
+      throw existingEmailError;
+    }
+      
+    if (existingEmail) {
+      return res.status(409).json({ message: 'Email is already registered' });
+    }
+    
+    // 1. Create user in Supabase Auth.
+    // If service role key is configured, use admin API to bypass email rate limits.
+    let authData;
+    let authError;
+    let signupMode = 'standard';
+
+    if (supabaseAdmin) {
+      signupMode = 'admin';
+      const response = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { login_id }
+      });
+      authData = response.data;
+      authError = response.error;
+    } else {
+      const response = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { login_id }
+        }
+      });
+      authData = response.data;
+      authError = response.error;
+    }
 
     if (authError) {
-      return res.status(400).json({ message: authError.message });
+      const msg = authError.message || 'Signup failed';
+
+      if (/email rate limit exceeded/i.test(msg)) {
+        return res.status(429).json({
+          message:
+            'Signup is temporarily rate-limited by Supabase. Add SUPABASE_SERVICE_ROLE_KEY on server to bypass this limit for backend-created users, or wait and retry.'
+        });
+      }
+
+      const status = /already registered/i.test(msg) ? 409 : 400;
+      return res.status(status).json({ message: msg });
     }
     
     // 2. Hash password just to satisfy our physical public table NOT NULL constraint
@@ -43,10 +94,20 @@ export const signup = async (req, res) => {
       .select('id, login_id, email, created_at')
       .single();
       
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ message: 'User already exists' });
+      }
+      throw error;
+    }
     
+    const message =
+      signupMode === 'admin'
+        ? 'Account created successfully. You can now sign in.'
+        : 'Account created! Please check your email to verify your account.';
+
     res.status(201).json({ 
-      message: 'Account created! Please check your email to verify your account.', 
+      message,
       user: data 
     });
   } catch (error) {

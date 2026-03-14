@@ -15,7 +15,8 @@ import { useAuthStore } from '../store/authStore';
 
 export default function Sidebar() {
   const location = useLocation();
-  const { logout, isAdmin } = useAuthStore((state) => ({ logout: state.logout, isAdmin: state.isAdmin }));
+  const logout = useAuthStore((state) => state.logout);
+  const isAdmin = useAuthStore((state) => state.isAdmin);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: BarChart3 },

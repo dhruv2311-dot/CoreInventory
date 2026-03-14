@@ -19,7 +19,9 @@ export const apiCall = async (endpoint, method = 'GET', body = null) => {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'API Error' }));
-    throw new Error(error.message || error.error || 'API Error');
+    const apiError = new Error(error.message || error.error || 'API Error');
+    apiError.status = response.status;
+    throw apiError;
   }
   
   // For 204 No Content

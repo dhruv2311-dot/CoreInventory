@@ -47,7 +47,15 @@ export default function Signup() {
       });
       navigate('/login');
     } catch (err) {
-      setError(err.message || 'Signup failed');
+      const isRateLimited =
+        err?.status === 429 ||
+        /rate limit exceeded/i.test(err?.message || '');
+
+      if (isRateLimited) {
+        setError('Too many signup attempts right now. Please wait 60 seconds and try again.');
+      } else {
+        setError(err.message || 'Signup failed');
+      }
     } finally {
       setLoading(false);
     }
