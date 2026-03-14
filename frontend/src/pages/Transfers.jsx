@@ -147,6 +147,7 @@ export default function Transfers() {
                   value={formData.quantity}
                   onChange={e => setFormData({ ...formData, quantity: e.target.value })}
                   className="theme-input w-full text-lg font-semibold"
+                  placeholder="e.g. 20"
                 />
               </div>
 
