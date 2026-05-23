@@ -93,6 +93,9 @@ CoreInventory is an enterprise-ready inventory operations platform for managing 
 - `POST /auth/reset-password/request`
 - `POST /auth/reset-password/confirm`
 
+### Published API Documentation
+- Postman collection: https://documenter.getpostman.com/view/39189509/2sBXwjwtjw
+
 ### Domain Endpoint Groups
 - `/products`
 - `/receipts`
