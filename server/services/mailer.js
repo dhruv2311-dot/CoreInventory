@@ -3,19 +3,31 @@ import nodemailer from 'nodemailer';
 
 dotenv.config();
 
-const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const smtpHost = String(process.env.SMTP_HOST || 'smtp.gmail.com').trim();
 const smtpPort = Number(process.env.SMTP_PORT || 587);
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, '');
-const smtpFromEmail = process.env.SMTP_FROM_EMAIL || smtpUser;
-const smtpFromName = process.env.SMTP_FROM_NAME || 'CoreInventory';
+const smtpUser = String(process.env.SMTP_USER || '').trim();
+const smtpPass = String(process.env.SMTP_PASS || '').replace(/\s+/g, '');
+const smtpFromEmail = String(process.env.SMTP_FROM_EMAIL || smtpUser || '').trim();
+const smtpFromName = String(process.env.SMTP_FROM_NAME || 'CoreInventory').trim();
 
 let transporter;
 
-const getTransporter = () => {
+const validateSmtpConfig = () => {
   if (!smtpUser || !smtpPass) {
-    throw new Error('SMTP credentials are missing. Set SMTP_USER and SMTP_PASS in server .env');
+    throw new Error('SMTP credentials are missing. Set SMTP_USER and SMTP_PASS in server .env or Render environment variables.');
   }
+
+  if (!smtpHost) {
+    throw new Error('SMTP_HOST is missing. Set SMTP_HOST in server .env or Render environment variables.');
+  }
+
+  if (!smtpFromEmail) {
+    throw new Error('SMTP_FROM_EMAIL is missing. Set SMTP_FROM_EMAIL in server .env or Render environment variables.');
+  }
+};
+
+const getTransporter = async () => {
+  validateSmtpConfig();
 
   if (!transporter) {
     transporter = nodemailer.createTransport({
@@ -29,11 +41,15 @@ const getTransporter = () => {
     });
   }
 
+  await transporter.verify();
   return transporter;
 };
 
+export const verifySmtpConfiguration = async () => getTransporter();
+
 export const sendPasswordResetOtpEmail = async ({ email, otp, expiryMinutes }) => {
-  const mailer = getTransporter();
+  const mailer = await getTransporter();
+
   await mailer.sendMail({
     from: `\"${smtpFromName}\" <${smtpFromEmail}>`,
     to: email,

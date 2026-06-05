@@ -222,9 +222,9 @@ export const requestPasswordResetOtp = async (req, res) => {
         expiryMinutes: getOtpExpiryMinutes(),
       });
     } catch (mailError) {
-      console.error('Reset password OTP failed:', mailError.message);
+      console.error('Reset password OTP failed:', mailError);
       return res.status(500).json({
-        message: 'Could not send OTP email. Check SMTP_USER and SMTP_PASS in server .env.'
+        message: mailError?.message || 'Could not send OTP email.'
       });
     }
 
