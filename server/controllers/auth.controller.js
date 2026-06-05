@@ -12,6 +12,7 @@ import { sendPasswordResetOtpEmail } from '../services/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
 const SUPPORTED_ROLES = ['Inventory Manager', 'Warehouse Staff'];
+const usersClient = supabaseAdmin ?? supabase;
 
 const normalizeRole = (role) => {
   if (!role) return 'Warehouse Staff';
@@ -29,17 +30,25 @@ const isStrongPassword = (pass = '') => {
 export const signup = async (req, res) => {
   try {
     const { login_id, email, password, role } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedLoginId = String(login_id || '').trim();
     const normalizedRole = normalizeRole(role);
 
-    if (!login_id || !email || !password) {
+    if (!normalizedLoginId || !normalizedEmail || !password) {
       return res.status(400).json({ message: 'login_id, email, and password are required' });
+    }
+
+    if (!supabaseAdmin) {
+      return res.status(500).json({
+        message: 'Server is missing SUPABASE_SERVICE_ROLE_KEY. Add it to server/.env so signup can write to the users table.'
+      });
     }
     
     // Check login_id and email independently for deterministic duplicate errors.
-    const { data: existingLoginId, error: existingLoginError } = await supabase
+    const { data: existingLoginId, error: existingLoginError } = await usersClient
       .from('users')
       .select('id')
-      .eq('login_id', login_id)
+      .eq('login_id', normalizedLoginId)
       .maybeSingle();
 
     if (existingLoginError) {
@@ -50,10 +59,10 @@ export const signup = async (req, res) => {
       return res.status(409).json({ message: 'Login ID is already taken' });
     }
 
-    const { data: existingEmail, error: existingEmailError } = await supabase
+    const { data: existingEmail, error: existingEmailError } = await usersClient
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
     if (existingEmailError) {
@@ -66,10 +75,10 @@ export const signup = async (req, res) => {
     
     // 1. Create user via regular signUp to trigger "Confirm sign up" email template.
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
-        data: { login_id, role: normalizedRole }
+        data: { login_id: normalizedLoginId, role: normalizedRole }
       }
     });
 
@@ -98,10 +107,17 @@ export const signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // 3. Keep our public.users table synchronized
-    const id = authData.user ? authData.user.id : undefined;
-    const { data, error } = await supabase
+    const id = authData.user?.id;
+
+    if (!id) {
+      return res.status(500).json({
+        message: 'Supabase did not return a user id after signup. Check Authentication settings and email confirmation configuration.'
+      });
+    }
+
+    const { data, error } = await usersClient
       .from('users')
-      .insert({ id, login_id, email, password: hashedPassword })
+      .insert({ id, login_id: normalizedLoginId, email: normalizedEmail, password: hashedPassword })
       .select('id, login_id, email, created_at')
       .single();
       
@@ -124,12 +140,13 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { login_id, password } = req.body;
+    const normalizedLoginId = String(login_id || '').trim();
     
     // 1. Fetch the user's email from our table using their login_id
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await usersClient
       .from('users')
       .select('*')
-      .eq('login_id', login_id)
+      .eq('login_id', normalizedLoginId)
       .maybeSingle();
       
     if (userError || !user) {
@@ -174,7 +191,7 @@ export const requestPasswordResetOtp = async (req, res) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await usersClient
       .from('users')
       .select('id, email')
       .eq('email', normalizedEmail)
@@ -267,7 +284,7 @@ export const confirmPasswordResetOtp = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    const { error: updateUserError } = await supabase
+    const { error: updateUserError } = await usersClient
       .from('users')
       .update({ password: hashedPassword })
       .eq('id', user.id);
