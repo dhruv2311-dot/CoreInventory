@@ -41,11 +41,13 @@ const getTransporter = async () => {
     });
   }
 
-  await transporter.verify();
   return transporter;
 };
 
-export const verifySmtpConfiguration = async () => getTransporter();
+export const verifySmtpConfiguration = async () => {
+  const mailer = await getTransporter();
+  await mailer.verify();
+};
 
 export const sendPasswordResetOtpEmail = async ({ email, otp, expiryMinutes }) => {
   const mailer = await getTransporter();
