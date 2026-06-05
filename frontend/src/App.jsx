@@ -30,6 +30,7 @@ const ProtectedRoute = ({ children }) => {
 
 function AppRoutes() {
   const location = useLocation();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [isBootLoading, setIsBootLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
     return !window.sessionStorage.getItem('app_boot_loaded');
@@ -98,6 +99,7 @@ function AppRoutes() {
         <Route path="/warehouse" element={<ProtectedRoute><Warehouse /></ProtectedRoute>} />
         <Route path="/locations" element={<ProtectedRoute><Locations /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>
     </>
   );
