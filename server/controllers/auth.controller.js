@@ -190,6 +190,12 @@ export const requestPasswordResetOtp = async (req, res) => {
       return res.status(400).json({ message: 'email is required' });
     }
 
+    if (!supabaseAdmin) {
+      return res.status(500).json({
+        message: 'Server is missing SUPABASE_SERVICE_ROLE_KEY. Add it to server/.env so password reset can read the users table.'
+      });
+    }
+
     const normalizedEmail = String(email).trim().toLowerCase();
     const { data: user, error: userError } = await usersClient
       .from('users')
@@ -255,7 +261,13 @@ export const confirmPasswordResetOtp = async (req, res) => {
       return res.status(400).json({ message: otpVerification.message });
     }
 
-    const { data: user, error: userError } = await supabase
+    if (!supabaseAdmin) {
+      return res.status(500).json({
+        message: 'Server is missing SUPABASE_SERVICE_ROLE_KEY for secure password reset'
+      });
+    }
+
+    const { data: user, error: userError } = await usersClient
       .from('users')
       .select('id, email')
       .eq('email', normalizedEmail)
