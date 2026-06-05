@@ -114,7 +114,10 @@ export default function Navbar() {
   const handleNotifClick = (notif) => {
     markRead(notif.id);
     setShowNotifications(false);
-    navigate(notif.path);
+
+    if (typeof notif.path === 'string' && notif.path.trim()) {
+      navigate(notif.path);
+    }
   };
 
   const handleMarkAllRead = () => {
